@@ -13,9 +13,10 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
+      - name: register KernelSU-Next dir
+        run: |
+          git clone -b legacy-susfs-v2 https://github.com/omrxdev/KernelSU-Next.git
+        
       - name: Install dependencies
         run: |
           sudo apt update

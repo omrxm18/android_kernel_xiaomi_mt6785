@@ -14,7 +14,7 @@ KERNEL_IMAGE=out/arch/arm64/boot/Image.gz
 ANYKERNEL_DIR=builds/AnyKernel3
 ZIP_OUT="$(pwd)/$(dirname "$ANYKERNEL_DIR")"
 LOGDIR="$(pwd)/logs"
-TOOLCHAIN="$HOME/toolchains/clang-r563880/bin"
+TOOLCHAIN="$HOME/toolchains/clang-r563880c/bin"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --toolchain)
@@ -74,7 +74,7 @@ warn()  { echo -e "${YELLOW}[ WARN ]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
 # ─── Banner ───────────────────────────────────────────────────────────────────
-echo -e "\n${YELLOW}====================\n By omrxdev\nTelegram: @omrxm\n====================${NC}\n"
+echo -e "\n${YELLOW}====================\n By omrxm18\nTelegram: @omrxm\n====================${NC}\n"
 
 # ─── Sanity checks ────────────────────────────────────────────────────────────
 [[ ! -f "$TOOLCHAIN/clang" ]] && { error "Toolchain not found at $TOOLCHAIN/clang Please run with --toolchain to configure it, or set it manually in the build script."; exit 1; }
@@ -82,14 +82,7 @@ echo -e "\n${YELLOW}====================\n By omrxdev\nTelegram: @omrxm\n=======
 if [[ ! -d "$ANYKERNEL_DIR"   ]]; then
   warn "AnyKernel3 not found at $ANYKERNEL_DIR. creating..."
   mkdir -p "$ANYKERNEL_DIR"
-  git clone -q https://github.com/osm0sis/AnyKernel3 $ANYKERNEL_DIR
-
-# First-time setup: correct device identifiers in AnyKernel3 metadata
-  sed -i \
-    -e 's/^\(device\.name[345]\)=.*/\1=/' \
-    -e 's/^device\.name1=.*/device.name1=rosemary/' \
-    -e 's/^device\.name2=.*/device.name2=secret/' \
-    "$ANYKERNEL_DIR/anykernel.sh"
+  git clone -q https://github.com/omrxm18/AnyKernel3 $ANYKERNEL_DIR
 fi
 
 log "Toolchain: $("$TOOLCHAIN/clang" --version | head -1)"

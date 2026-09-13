@@ -1,0 +1,94 @@
+name: Kernel Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - openELA-4.19
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential bc bison flex \
+            libssl-dev libelf-dev zip curl python3 ccache
+
+      - name: Configure ccache
+        run: |
+          ccache --max-size=5G
+          ccache --set-config=compression=true
+          ccache --set-config=compression_level=1
+          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+          echo "/usr/lib/ccache" >> $GITHUB_PATH
+
+      - name: Cache ccache storage
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-kernel-${{ runner.os }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            ccache-kernel-${{ runner.os }}-${{ github.ref_name }}-
+            ccache-kernel-${{ runner.os }}-
+
+      - name: Cache clang toolchain
+        id: cache-clang
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/toolchains/clang-r563880
+          key: clang-r563880-v1
+
+      - name: Download clang r563880
+        if: steps.cache-clang.outputs.cache-hit != 'true'
+        run: |
+          TOOLCHAIN_DIR="${{ github.workspace }}/toolchains/clang-r563880"
+          mkdir -p "$TOOLCHAIN_DIR"
+
+          curl -fL \
+            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/heads/android16-qpr2-release/clang-r563880.tar.gz" \
+            -o /tmp/clang.tar.gz
+
+          tar -xzf /tmp/clang.tar.gz -C "$TOOLCHAIN_DIR"
+
+      - name: Verify toolchain
+        run: |
+          "${{ github.workspace }}/toolchains/clang-r563880/bin/clang" --version
+
+      - name: Make build.sh executable
+        run: chmod +x build.sh
+
+      - name: Build kernel
+        env:
+          CCACHE_DIR: ${{ env.CCACHE_DIR }}
+        run: |
+          ./build.sh --toolchain "${{ github.workspace }}/toolchains/clang-r563880/bin"
+
+      - name: Print ccache stats
+        if: always()
+        run: ccache --show-stats
+
+      - name: Upload kernel artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-build
+          path: builds/*.zip
+
+      - name: Upload error logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build.log
+            errors.log
+          if-no-files-found: ignore

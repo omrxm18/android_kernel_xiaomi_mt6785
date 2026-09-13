@@ -1,0 +1,4 @@
+[submodule "KernelSU-Next"]
+	path = KernelSU-Next
+	url = https://github.com/omrxm18/KernelSU-Next
+	branch = legacy1

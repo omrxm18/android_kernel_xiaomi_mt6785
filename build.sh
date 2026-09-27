@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── Variables ────────────────────────────────────────────────────────────────
 OUT=out
-LOG=build.log
-TIMESTAMP_LOG="build-$(date +%Y%m%d-%H%M%S).log"
-ERRORLOG=errors.log
 ARCH=arm64
-SUBARCH=arm64
+LOG=build.log
+ERRORLOG=errors.log
+LOGDIR="$(pwd)/logs"
+TIMESTAMP_LOG="build-$(date +%Y%m%d-%H%M%S).log"
+TOOLCHAIN="$HOME/toolchains/clang-r563880c/bin"
 JOBS=$(nproc --all)
 DEFCONFIG=rosemary_defconfig
-KERNEL_IMAGE=out/arch/arm64/boot/Image.gz
 ANYKERNEL_DIR=builds/AnyKernel3
+KERNEL_IMAGE=$(pwd)/out/arch/$ARCH/boot/Image.gz
 ZIP_OUT="$(pwd)/$(dirname "$ANYKERNEL_DIR")"
-LOGDIR="$(pwd)/logs"
-TOOLCHAIN="$HOME/toolchains/clang-r563880/bin"
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --toolchain)
-      TOOLCHAIN="$2"
-      shift 2
-      ;;
+    --toolchain|-t)
+    [[ -n "${TOOLCHAIN_SET:-}" ]] && { error "you can only set $1 one time"; exit 1; }
+    TOOLCHAIN="$2"
+    TOOLCHAIN_SET=1
+    shift 2
+    ;;
     --clean)
       make mrproper O="$OUT" > /dev/null 2>&1 || true
-      make mrproper > /dev/null 2>&1 || true
       rm -rf "$OUT" "$LOG" "$ERRORLOG"
       echo "Cleaned build artifacts."
       exit 0
@@ -32,8 +32,8 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [options]"
       echo "Options:"
       echo "  --toolchain <path>   Path to Clang toolchain (default: $TOOLCHAIN)"
-      echo "  --clean              Clean previous build artifacts"
-      echo "  -j, --jobs           Number of build jobs"
+      echo "  --clean              Clean previous build artifacts (this is distructive, compiles from scratch)"
+      echo "  -j, --jobs           Number of build jobs (cpu threads used)"
       echo "  -d, --defconfig      Specify your own defconfig"
       echo "  -h, --help           Show this help message and exit"
       exit 0
@@ -53,15 +53,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ─── Toolchain ────────────────────────────────────────────────────────────────
-export ARCH SUBARCH
+export ARCH
 export CC=clang
 export LD=ld.lld
 export LLVM=1
 export LLVM_IAS=1
 export PATH="$TOOLCHAIN:$PATH"
 
-# ─── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -73,10 +71,8 @@ ok()    { echo -e "${GREEN}[ OK ]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[ WARN ]${NC} $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
-# ─── Banner ───────────────────────────────────────────────────────────────────
-echo -e "\n${YELLOW}====================\n By omrxdev\nTelegram: @omrxm\n====================${NC}\n"
+echo -e "\n${YELLOW}====================\n By omrxm18\nTelegram: @omrxm18\n====================${NC}\n"
 
-# ─── Sanity checks ────────────────────────────────────────────────────────────
 [[ ! -f "$TOOLCHAIN/clang" ]] && { error "Toolchain not found at $TOOLCHAIN/clang Please run with --toolchain to configure it, or set it manually in the build script."; exit 1; }
 
 if [[ ! -d "$ANYKERNEL_DIR"   ]]; then
@@ -93,26 +89,19 @@ if [[ ! -d "$ANYKERNEL_DIR"   ]]; then
 fi
 
 log "Toolchain: $("$TOOLCHAIN/clang" --version | head -1)"
-sleep 0.5
 
-# ─── archive logs ────────────────────────────────────────────────────────────────────
-[[ ! -d $LOGDIR ]] && { log "Creating log dir"; mkdir "$LOGDIR"; }
+log "Creating log dir"; mkdir "$LOGDIR"
 
 if [[ -f $LOG ]]; then
   cp "$LOG" "$LOGDIR"/"$TIMESTAMP_LOG"
 fi
-# ─── Clean ────────────────────────────────────────────────────────────────────
 log "Cleaning previous build artifacts..."
 rm -f "$LOG" "$ERRORLOG"
-sleep 0.5
 
-# ─── Configure ────────────────────────────────────────────────────────────────
 log "Configuring with $DEFCONFIG..."
 make O="$OUT" "$DEFCONFIG"
 
-# ─── Build ────────────────────────────────────────────────────────────────────
 KVER=$(make O="$OUT" -s kernelversion 2>/dev/null || echo "unknown")
-KVER="${KVER:-unknown}"
 ZIP_NAME="kernel-${KVER}-$(date +%Y%m%d-%H%M).zip"
 
 log "Kernel Version: ${KVER}"
@@ -125,7 +114,6 @@ set -e
 
 ELAPSED=$(( $(date +%s) - START_TIME ))
 
-# ─── Result ───────────────────────────────────────────────────────────────────
 if [[ "$BUILD_STATUS" -ne 0 ]]; then
     error "Build FAILED in $(( ELAPSED / 60 ))m $(( ELAPSED % 60 ))s"
 
@@ -144,11 +132,9 @@ fi
 
 ok "Build completed in $(( ELAPSED / 60 ))m $(( ELAPSED % 60 ))s"
 
-# ─── Package ──────────────────────────────────────────────────────────────────
 [[ ! -f "$KERNEL_IMAGE" ]] && { error "Kernel image not found at $KERNEL_IMAGE"; exit 1; }
 
 log "Packaging AnyKernel3 zip..."
-rm -f "$ANYKERNEL_DIR"/Image.gz "$ANYKERNEL_DIR"/Image
 cp "$KERNEL_IMAGE" "$ANYKERNEL_DIR/"
 
 pushd "$ANYKERNEL_DIR" > /dev/null

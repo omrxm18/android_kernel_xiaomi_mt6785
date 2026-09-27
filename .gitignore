@@ -131,3 +131,19 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+# My Own
+out/
+susfs4ksu/
+*.rej
+*.orig
+*.patch
+*.log
+*.zip
+.vscode
+Image.gz
+*.o
+*.cmd
+compile_commands.json
+builds/
+logs/

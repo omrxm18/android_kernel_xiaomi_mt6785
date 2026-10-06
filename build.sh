@@ -90,7 +90,7 @@ fi
 
 log "Toolchain: $("$TOOLCHAIN/clang" --version | head -1)"
 
-log "Creating log dir"; mkdir "$LOGDIR"
+[[ ! -d "$LOGDIR" ]] && { log "Creating log dir"; mkdir -p "$LOGDIR"; }
 
 if [[ -f $LOG ]]; then
   cp "$LOG" "$LOGDIR"/"$TIMESTAMP_LOG"

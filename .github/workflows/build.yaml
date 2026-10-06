@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -32,7 +32,7 @@ jobs:
           echo "/usr/lib/ccache" >> $GITHUB_PATH
 
       - name: Cache ccache storage
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.ccache
           key: ccache-kernel-${{ runner.os }}-${{ github.ref_name }}-${{ github.sha }}
@@ -42,26 +42,26 @@ jobs:
 
       - name: Cache clang toolchain
         id: cache-clang
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
-          path: ${{ github.workspace }}/toolchains/clang-r563880
-          key: clang-r563880-v1
+          path: ${{ github.workspace }}/toolchains/clang-r563880c
+          key: clang-r563880c-v1
 
-      - name: Download clang r563880
+      - name: Download clang r563880c
         if: steps.cache-clang.outputs.cache-hit != 'true'
         run: |
-          TOOLCHAIN_DIR="${{ github.workspace }}/toolchains/clang-r563880"
+          TOOLCHAIN_DIR="${{ github.workspace }}/toolchains/clang-r563880c"
           mkdir -p "$TOOLCHAIN_DIR"
 
           curl -fL \
-            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/heads/android16-qpr2-release/clang-r563880.tar.gz" \
+            "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/heads/android16-qpr2-release/clang-r563880c.tar.gz" \
             -o /tmp/clang.tar.gz
 
           tar -xzf /tmp/clang.tar.gz -C "$TOOLCHAIN_DIR"
 
       - name: Verify toolchain
         run: |
-          "${{ github.workspace }}/toolchains/clang-r563880/bin/clang" --version
+          "${{ github.workspace }}/toolchains/clang-r563880c/bin/clang" --version
 
       - name: Make build.sh executable
         run: chmod +x build.sh
@@ -70,7 +70,7 @@ jobs:
         env:
           CCACHE_DIR: ${{ env.CCACHE_DIR }}
         run: |
-          ./build.sh --toolchain "${{ github.workspace }}/toolchains/clang-r563880/bin"
+          ./build.sh --toolchain "${{ github.workspace }}/toolchains/clang-r563880c/bin"
 
       - name: Print ccache stats
         if: always()
@@ -78,14 +78,14 @@ jobs:
 
       - name: Upload kernel artifact
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kernel-build
           path: builds/*.zip
 
       - name: Upload error logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-logs
           path: |

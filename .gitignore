@@ -131,3 +131,11 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+out/
+*.log
+*.zip
+.vscode
+compile_commands.json
+builds/
+logs/
